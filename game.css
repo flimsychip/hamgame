@@ -1,0 +1,60 @@
+canvas {
+    background-color: rgb(130, 115, 100);
+}
+.container {
+    font-family: Georgia;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 25px;
+}
+#loseScreen, #deathScreen, #replay {
+    font-size: 40px;
+    font-weight: bold;
+    color: white;
+    background-color: rgba(65, 55, 35, 0.5);
+    padding: 10px;
+    border-radius: 10px;
+    display: none;
+}
+#deathScreen {
+    font-family: monospace;
+    font-size: 20px;
+}
+#enemyName {
+    margin-top: 0;
+    text-align: center;
+}
+#replay {
+    font-size: 25px;
+    text-decoration: none;
+}
+.arrows {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+.arrowButton {
+    cursor: pointer;
+}
+.text {
+    flex-direction: column;
+}
+body {
+    background-color: rgb(130, 115, 100); 
+    font-family: monospace; 
+    font-size: 20px;
+    color: white;
+    text-align: center;
+    margin: 0; 
+    padding: 0; 
+    height: 100%; 
+    overflow: hidden;
+}
