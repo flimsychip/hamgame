@@ -47,6 +47,14 @@ canvas {
 .text {
     flex-direction: column;
 }
+#killCount {
+    font-family: Georgia;
+    display: block;
+    position: absolute;
+    top: 5px;
+    left: 10px;
+    text-align: none;
+}
 body {
     background-color: rgb(130, 115, 100); 
     font-family: monospace; 
