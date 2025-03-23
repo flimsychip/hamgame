@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+</head>
+<link rel="stylesheet" href="game.css">
+<body onload="updateHam()">
+    <a href="game.html"><img src="images/uglyham.png" id="loadham" style="width: 100px; position: absolute"></a>
+    <script>
+        var angle = 0; 
+        var ham = document.getElementById("loadham");
+
+        function updateHam() {
+            var x = (window.innerWidth / 2) + 25 * Math.cos(angle) - 50;
+            var y = (window.innerHeight / 2) + 25 * Math.sin(angle) - 50;
+            ham.style.left = x + "px";
+            ham.style.top = y + "px";
+            angle += 0.05;
+            requestAnimationFrame(updateHam);
+        }
+    </script>
+    <p>loading... click the ham to start!</p>
+    <p>[WASD] to move, [space] to shoot</p>
+</body>
+</html>
