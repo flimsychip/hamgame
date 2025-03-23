@@ -1,0 +1,801 @@
+<!-- i've never used js before don't make fun of me idk what im doing -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+</head>
+<link rel="stylesheet" href="game.css">
+<body onload="startGame()">
+    <div class="container">
+        <div id="loseScreen"></div>
+        <div id="deathScreen">
+            <div class="arrows">
+                <div class="arrowButton" onclick="updateDeath()">&lt;</div>
+                <div class="text">
+                    <p id="enemyName"></p>
+                    <p id="enemyDesc"></p>
+                    <p id="enemyBhv"></p>  
+                </div>
+                <div class="arrowButton" onclick="updateDeath()">&gt;</div>
+            </div>
+            <img id="enemyImg" width="100px">
+        </div>
+        <a id="replay" href="index.html">REPLAY</a>
+    </div>
+    <script>
+        var player;
+        var lives = 5;
+        var heartFull = new Image();
+        var heartHalf = new Image();
+        var heartEmpty = new Image();
+        var gameLost = false;
+        var projectiles = [];
+        var enemies = [];
+        var enemyImgs = new Array(19);
+        var lastEnemy;
+        var spawns = [];
+        var vampires = [];
+        var direction = {x: 0, y: 0};
+        var time = Date.now();
+        var screenNum = 0;
+        var info = [
+            { name: "OLD", desc: "and you're still in your prime...", bhv: "just really slow" },
+            { name: "ANGRY", desc: "they seem to know you, but you can't remember them. maybe you did something in a past life?", bhv: "just really fast" },
+            { name: "BLIND", desc: "how did that happen?", bhv: "they can't see and they can't particularly hear very well either. will choose a spot to fumble around for a few seconds and then choose a new one if you aren't there." },
+            { name: "LOVER", desc: "?maybe it was worth it even if it killed you", bhv: "gets really fast when near." },
+            { name: "SLEEPY", desc: "zzz.....", bhv: "get too close and you'll wake them up -- get far enough away again and they won't bother you. they just want to sleep and you're running around throwing seeds everywhere." },
+            { name: "WINDY", desc: "where is the wind coming from? and why is it not blowing you??", bhv: "too busy trying not to get blown away" },
+            { name: "CRAZY", desc: "i don't think he knows where he's going...", bhv: "bounces off the walls" },
+            { name: "GREEDY", desc: "mmfmffghbhhh", bhv: "can eat (1) sunflower seed before dying to another." },
+            { name: "GHOST", desc: "wait where did it go?", bhv: "turns invisible every couple seconds and cannot be hit by seeds during this period." },
+            { name: "DUMBO", desc: "well just take a look", bhv: "uses echolocation. don't throw seeds and they won't find you!" },
+            { name: "MOTHER", desc: "don't you feel bad?", bhv: "a mother that you have to KILL who spawns babies that you also have to KILL" },
+            { name: "JOLLY", desc: "the rocks are quiet because the trees are listening", bhv: "the snow won't hurt you, but it will make you cold and slow" },
+            { name: "MUSICIAN", desc: '<a style=\"text-decoration: underline; color: white !important\" href=\"https://open.spotify.com/playlist/2fl9bkzEBzEXXjxNkklc9K?si=61ec10607f6347ed\">shameless playlist plug</a>', bhv: "the music is so powerful you feel it right in your 5 hearts" },
+            { name: "WIZARD", desc: "abracadabra shazam baba booey", bhv: "do you need a text prompt to tell you not to drink random purple liquids?" },
+            { name: "MONKEY", desc: "it's the peakest fruit", bhv: "don't slip on the peels!" },
+            { name: "VAMPIRE", desc: "you must ham on it", bhv: "can convert other enemies. the more of them there are, the faster they all are" },
+            { name: "DEVIL", desc: "did you know devil spelled backwards is evil", bhv: "fire burns!" },
+            { name: "ARTIST", desc: "can you draw me for free?", bhv: "leaves paint everywhere. don't let it get in your eyes!" }
+        ]
+
+        function startGame() {
+            player = new component(100, 85, "images/uglyham.png", window.innerWidth / 2 - 50, window.innerHeight / 2 - 30);
+            player.speedScale = 1.75;
+            heartFull.src = "images/hearts/heart full.png";
+            heartHalf.src = "images/hearts/heart half.png";
+            heartEmpty.src = "images/hearts/heart empty.png";
+            for(let i = 0; i < enemyImgs.length; i++) {
+                enemyImgs[i] = "images/enemies/enemy" + i + ".png";
+            }
+            gameArea.start();
+            resizeCanvas();
+            createProjectile();
+            createEnemy();
+        }
+
+        function component(width, height, img, x, y, angle = 0) {  
+            this.width = width;
+            this.height = height;
+            this.x = x;
+            this.y = y;
+            this.speedX = 0;
+            this.speedY = 0; 
+            this.speedScale = 1.5;
+            this.dirX;
+            this.dirY;
+            this.image = new Image();
+            this.image.src = img;
+            this.angle = angle;
+            this.radius = Math.sqrt((this.width ** 2) + (this.height ** 2)) / 2;
+            this.offsetX = 0;
+            this.offsetY = 0;
+            this.targetX = 0;
+            this.targetY = 0;
+            this.randomX = 0;
+            this.randomY = 0;
+            this.index;
+            this.timeAlive = 0;
+            this.health = 1;
+            this.dmg = 1;
+            this.lastSpawn = 0;
+            this.opacity = 1;
+            this.blowDir = "none";
+            this.isSet = false;
+            this.isBlind = false;
+            this.isInLove = false;
+            this.isSleepy = false;
+            this.isCrazy = false;
+            this.isGhost = false;
+            this.isTransparent = false;
+            this.isEars = false;
+            this.isMother = false;
+            this.isJolly = false;
+            this.isSnowflake = false;
+            this.playsSax = false;
+            this.isMusic = false;
+            this.isWizard = false;
+            this.eatsBananas = false;
+            this.isBanana = false;
+            this.isVamp = false;
+            this.isDevil = false;
+            this.isFire = false;
+            this.isArtist = false;
+            this.isPaint = false;
+            this.isSplotch = false;
+
+            // applies rotation to projectile images
+            this.update = function() { 
+                gameArea.context.save();
+                // ** enemy behavior adjustments **
+                if(this.isGhost) {
+                    if((this.timeAlive % 300) <= 150) {
+                        gameArea.context.globalAlpha = 0.25;
+                        this.isTransparent = true;
+                    } else {
+                        gameArea.context.globalAlpha = 1;
+                        this.isTransparent = false;
+                    }
+                }
+                if(this.isSplotch) {
+                    this.image.zIndex = '1000';
+                    gameArea.context.globalAlpha = this.opacity;
+                }
+                gameArea.context.translate(this.x + this.width / 2, this.y + this.height / 2);  
+                gameArea.context.rotate(this.angle * (Math.PI / 180));
+                gameArea.context.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);
+                gameArea.context.restore();
+                }
+            // applies translation/movement
+            this.newPos = function() {
+                this.x += this.speedX;
+                this.y += this.speedY;        
+            }
+        }
+
+        function createProjectile() {
+            let angle = 0;
+            setInterval(function() {
+                // determines angle of rotation
+                switch(direction.x) {
+                    case 0:
+                        switch(direction.y) {
+                            case 2:
+                                angle = 315; // S
+                                break;
+                            case -2:
+                                angle = 135; // W
+                                break;
+                        }
+                        break;
+                    case 2:
+                        switch(direction.y) {
+                            case 0:
+                                angle = 225; // D
+                                break;
+                            case 2: 
+                                angle = 270; // D + S
+                                break;
+                            case -2:
+                                angle = 180; // D + W
+                                break;
+                        }
+                        break;
+                    case -2: 
+                        switch(direction.y) {
+                            case 0: 
+                                angle = 45; // A
+                                break;
+                            case 2: 
+                                angle = 0; // A + S
+                                break;
+                            case -2: 
+                                angle = 90; // A + W
+                                break;
+                        }
+                        break;
+                }
+                if(gameArea.keys[32]) {
+                    let projectile = new component(25, 25, "images/seed.png", player.x + 30, player.y + 25, angle);
+                    projectile.speedX = direction.x * 1.5;
+                    projectile.speedY = direction.y * 1.5;
+                    projectiles.push(projectile);
+                }
+            }, 250);
+        }
+
+        function createEnemy() {
+            setInterval(function() {
+                let enemyX = Math.random() * window.innerWidth;
+                let enemyY = Math.random() * window.innerHeight;
+                // don't spawn enemies too close to player
+                while(enemyX <= (player.x + 300) && enemyX >= (player.x - 300) && enemyY <= (player.y + 300) && enemyY >= (player.y - 300)) {
+                    enemyX = Math.random() * window.innerWidth;
+                    enemyY = Math.random() * window.innerHeight;
+                }
+
+                let randomImgIndex = Math.floor(Math.random() * enemyImgs.length);
+                let enemy = new component(100, 85, enemyImgs[randomImgIndex], enemyX, enemyY);
+                enemy.index = randomImgIndex;
+                // ** enemy behavior adjustments **
+                switch(randomImgIndex) {
+                    // old
+                    case 0:
+                        enemy.speedScale = 1;
+                        break;
+                    // angry
+                    case 1:
+                        enemy.speedScale = 2;
+                        break;
+                    // blind
+                    case 2:
+                        enemy.isBlind = true;
+                        break;
+                    // in love
+                    case 3:
+                        enemy.isInLove = true;
+                        break;
+                    // sleepy
+                    case 4:
+                        enemy.isSleepy = true;
+                        enemy.speedScale = 0;
+                        break;
+                    // windy
+                    case 5: 
+                        enemy.blowDir = "left";
+                        break;
+                    case 18: 
+                        enemy.blowDir = "right";
+                        enemy.index = 5;
+                        break;
+                    // crazy
+                    case 6: 
+                        enemy.isCrazy = true;
+                        enemy.speedScale = 2;
+                        break;
+                    // greedy
+                    case 7: 
+                        enemy.health = 2;
+                        break;
+                    // ghost
+                    case 8: 
+                        enemy.isGhost = true;
+                        break;
+                    // echolocation
+                    case 9: 
+                        enemy.isEars = true;
+                        break;
+                    // mother
+                    case 10:
+                        enemy.isMother = true;
+                        enemy.speedScale = 0;
+                        break;
+                    // christmas
+                    case 11: 
+                        enemy.isJolly = true;
+                        enemy.height = 100;
+                        break;
+                    // saxophonist
+                    case 12: 
+                        enemy.playsSax = true;
+                        break;
+                    // wizard
+                    case 13: 
+                        enemy.isWizard = true;
+                        enemy.height = 100;
+                        break;
+                    // banana
+                    case 14: 
+                        enemy.eatsBananas= true;
+                        enemy.height = 100;
+                        break;
+                    // vampire
+                    case 15: 
+                        enemy.isVamp = true;
+                        break;
+                    // devil
+                    case 16: 
+                        enemy.isDevil = true;
+                        break;
+                    // artist
+                    case 17: 
+                        enemy.isArtist = true;
+                        enemy.height = 90;
+                        break;
+                }
+                if(!enemy.isVamp) {
+                    enemies.push(enemy);
+                } else {
+                    vampires.push(enemy);
+                }
+            }, 1300);
+        }
+
+        function drawHearts() {
+            if(lives < 0) { lives = 0; }
+            let xpos = window.innerWidth - 40;
+            for(let i = 0; i < Math.floor(lives); i++) {
+                gameArea.context.drawImage(heartFull, xpos, 20, 25, 25);
+                xpos -= 30;
+            }
+            for(let i = 0; i < Math.ceil(lives - Math.floor(lives)); i++) {
+                gameArea.context.drawImage(heartHalf, xpos, 20, 25, 25);
+                xpos -= 30;
+            }
+            for(let i = 0; i < Math.floor(5 - lives); i++) {
+                gameArea.context.drawImage(heartEmpty, xpos, 20, 25, 25);
+                xpos -= 30;
+            }
+        }
+
+        function displayText(elementID, text, interval) {
+            let elem = document.getElementById(elementID);
+            elem.style.display = 'block';
+            let i = 0;
+            let count = 0;
+    
+            // add text to element letter by letter
+            let tempInterval = setInterval(function() {
+                if(i < text.length) {
+                    elem.innerHTML += text[i];
+                    i++;
+                    count++;
+                    if(count >= 30 && text[i] == " ") {
+                        elem.innerHTML += "<br>";
+                        count = 0;
+                    }
+                } else {
+                    clearInterval(tempInterval);
+                }
+            }, interval);
+        }
+
+        function displayDeath() {
+            displayText('loseScreen', 'YOU DIED!', 100);
+            document.getElementById('deathScreen').style.display = 'block';
+            document.getElementById('replay').style.display = 'block';
+            setTimeout(function() {
+                displayText('enemyName', '-- HAMNEMY: ' + info[lastEnemy.index].name + ' --', 50);
+            }, 100*9);
+            setTimeout(function() {
+                document.getElementById('enemyImg').src = "images/enemies/enemy" + lastEnemy.index + ".png";
+                updateDeath();
+            }, 100*9 + 50*info[lastEnemy.index].name.length);
+        }
+
+        function updateDeath() {
+            screenNum++;
+            if(screenNum % 2 == 0) {
+                document.getElementById('enemyDesc').innerHTML = "";
+                displayText('enemyBhv', "behavior: " + info[lastEnemy.index].bhv, 50);
+            } else {
+                document.getElementById('enemyBhv').innerHTML = "";
+                if(lastEnemy.index == 12) {
+                    displayText('enemyDesc', "shameless playlist plug", 50);
+                    setTimeout(function() {
+                        document.getElementById('enemyDesc').innerHTML = info[lastEnemy.index].desc;
+                    }, 50*23);
+                } else {
+                    displayText('enemyDesc', info[lastEnemy.index].desc, 50);
+                }
+            }
+        }
+
+        // using circle collision masks
+        function isColliding(obj1, obj2, tolerance = 0) {
+            let x = obj1.x - obj2.x;
+            let y = obj1.y - obj2.y;
+            let distance = Math.sqrt(x ** 2 + y ** 2);
+            return distance <= obj1.radius + obj2.radius - tolerance;
+        }
+        
+        function isNear(obj1, obj2, tolerance) {
+            let distance = Math.sqrt((obj1.x - obj2.x) ** 2 + (obj1.y - obj2.y) ** 2);
+            return distance <= tolerance;
+        }
+
+        // returns a string left/right/top/bottom/none
+        function atBounds(obj) {
+            if(obj.x <= 0) {
+                return "left";
+            } else if(obj.x + obj.width >= window.innerWidth) {
+                return "right";
+            } else if(obj.y <= 0) {
+                return "top";
+            } else if(obj.y + obj.height >= window.innerHeight) {
+                return "bottom";
+            } else {
+                return "none";
+            }
+        }
+
+        var gameArea = {
+            canvas : document.createElement("canvas"),
+            start : function() {
+                this.context = this.canvas.getContext("2d");
+                document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+                this.interval = setInterval(updateGameArea, 15);
+                window.addEventListener('keydown', function (e) {
+                    gameArea.keys = (gameArea.keys || []);
+                    gameArea.keys[e.keyCode] = true;
+                })
+                window.addEventListener('keyup', function (e) {
+                    gameArea.keys[e.keyCode] = (e.type == "keydown");
+                })
+            },
+            clear : function() {
+                this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+        }
+
+        function updateGameArea() {
+            if(gameLost) { 
+                return;
+            }
+            gameArea.clear();
+            drawHearts();
+            // player movement
+            player.speedX = 0;
+            player.speedY = 0;
+            if(gameArea.keys) {
+                if((!gameArea.keys[65] && !gameArea.keys[68]) && (gameArea.keys[87] || gameArea.keys[83])) { direction.x = 0; }
+                if(!gameArea.keys[87] && !gameArea.keys[83] && (gameArea.keys[65] || gameArea.keys[68])) { direction.y = 0; }
+                
+                if(gameArea.keys[65]) { player.speedX = -player.speedScale; direction.x = -2; } // A
+                if(gameArea.keys[68]) { player.speedX = player.speedScale; direction.x = 2; } // D
+                if(gameArea.keys[87]) { player.speedY = -player.speedScale; direction.y = -2; } // W
+                if(gameArea.keys[83]) { player.speedY = player.speedScale; direction.y = 2; } // S
+            }
+            player.newPos();
+            player.update();
+            // player-enemy collision check
+            for(let i = 0; i < enemies.length; i++) {
+                if(isColliding(enemies[i], player, 40)) {
+                    if(!enemies[i].isPaint && !enemies[i].isSplotch) {
+                        lastEnemy = enemies[i];
+                    }
+                    if(enemies[i].isSnowflake) {
+                        player.speedScale = 1;
+                        player.image.src = "images/coldham.png";
+                        player.update();
+                        setTimeout(function() {
+                            player.speedScale = 1.75;
+                            player.image.src = "images/uglyham.png";
+                        }, 2500);
+                    }
+                    if(enemies[i].isBanana) {
+                        if(!player.isSet) {
+                            var glideStartTime = Date.now();
+                            player.randomX = player.speedScale * (Math.random() * 2 - 1);
+                            player.randomY = player.speedScale * (Math.random() * 2 - 1);
+                            player.isSet = true;
+                        }
+                        let glideInterval = setInterval(function () {
+                            if (Date.now() - glideStartTime > 500) {
+                                clearInterval(glideInterval);
+                                player.isSet = false;
+                            } else {
+                                player.speedX = 2 * player.randomX;
+                                player.speedY = 2 * player.randomY;
+                                player.newPos();
+                                player.update();
+                            }
+                        }, 15);
+                    }
+                    if(enemies[i].isPaint && Date.now() - time > 100) {
+                        let splotch = new component(Math.floor(Math.random() * 200) + 100, Math.floor(Math.random() * 200) + 100, "images/spawns/splotch" + Math.floor(Math.random() * 3) + ".png", Math.random() * window.innerWidth, Math.random() * window.innerHeight);
+                        splotch.isSplotch = true;
+                        splotch.isTransparent = true;
+                        splotch.opacity = (Math.random() * 0.65) + 0.25;
+                        splotch.speedScale = 0;
+                        splotch.dmg = 0;
+                        spawns.push(splotch);
+                        time = Date.now();
+                    } else if(!enemies[i].isPaint && !enemies[i].isSplotch) {
+                        lives -= enemies[i].dmg;
+                        enemies.splice(i, 1);
+                        i--;
+                        drawHearts();
+                    }
+                }
+            }
+            // player-vampire collision check
+            for(let i = 0; i < vampires.length; i++) {
+                if(isColliding(vampires[i], player, 40)) {
+                    lastEnemy = vampires[i];
+                    lives -= vampires[i].dmg;
+                    vampires.splice(i, 1);
+                    i--;
+                    drawHearts();
+                }
+            }
+            if(lives <= 0) {
+                gameLost = true;
+                gameArea.clear();
+                displayDeath();
+                return;
+            }
+            // projectile-enemy collision check
+            for(let i = 0; i < projectiles.length; i++) {
+                for(let j = 0; j < enemies.length; j++) {
+                    if(isColliding(projectiles[i], enemies[j]) && !enemies[j].isTransparent) {
+                        enemies[j].health--;
+                        enemies[j].width -= 20;
+                        enemies[j].height -= 17;
+                        if(enemies[j].health <= 0) {
+                            enemies.splice(j, 1);
+                            j--;
+                        }
+                        projectiles.splice(i, 1);
+                        i--;
+                    }
+                }
+            }
+            // projectile-vampire collision check
+            for(let i = 0; i < projectiles.length; i++) {
+                for(let j = 0; j < vampires.length; j++) {
+                    if(isColliding(projectiles[i], vampires[j])) {
+                        vampires.splice(j, 1);
+                        j--;
+                        projectiles.splice(i, 1);
+                        i--;
+                    }
+                }
+            }
+            // vampire-enemy collision check
+            for(let i = 0; i < vampires.length; i++) {
+                for(let j = 0; j < enemies.length; j++) {
+                    if(isColliding(vampires[i], enemies[j], 40) && !enemies[j].isTransparent && !(enemies[j].dmg < 1)) {
+                        let vampire = new component(100, 85, "images/enemies/enemy15.png", enemies[j].x, enemies[j].y);
+                        vampire.isVamp = true;
+                        vampire.index = 15;
+                        vampires.push(vampire);
+                        enemies.splice(j, 1);
+                        j--;
+                    }
+                }
+            }
+            // projectile movement 
+            for(let i = 0; i < projectiles.length; i++) {
+                projectiles[i].newPos();
+                projectiles[i].update();
+            }
+            // enemy + spawn movement
+            for(let i = 0; i < enemies.length; i++) {
+                let tempX = player.x;
+                let tempY = player.y;
+                // ** v enemy behavior adjustments v **
+                // blind
+                if(enemies[i].isBlind && (enemies[i].timeAlive % 300) == 0) {
+                    enemies[i].offsetX = (Math.random() - 0.5) * 500;
+                    enemies[i].offsetY = (Math.random() - 0.5) * 500;
+                }
+                // in love
+                if(enemies[i].isInLove) {
+                    if(isNear(enemies[i], player, 250)) {
+                        enemies[i].speedScale = 2.5;
+                    } else {
+                        enemies[i].speedScale = 1.5;
+                    }
+                }
+                // sleepy
+                if(enemies[i].isSleepy) {
+                    if(isNear(enemies[i], player, 200)) {
+                        enemies[i].speedScale = 1.5;
+                    } else {
+                        enemies[i].speedScale = 0;
+                    }
+                }
+                // echolocation
+                if(enemies[i].isEars) {
+                    if(gameArea.keys[32]) {
+                        enemies[i].targetX = player.x;
+                        enemies[i].targetY = player.y;
+                    }
+                    tempX = enemies[i].targetX;
+                    tempY = enemies[i].targetY;
+                }
+                // mother
+                if(enemies[i].isMother && ((enemies[i].timeAlive % 400) == 1) && enemies[i].timeAlive != enemies[i].lastSpawn) {
+                    let baby = new component(50, 40, "images/enemies/babyham.png", enemies[i].x, enemies[i].y);
+                    baby.dmg = 0.5;
+                    baby.index = 10;
+                    spawns.push(baby);
+                    enemies[i].lastSpawn = enemies[i].timeAlive;
+                }
+                // christmas
+                if(enemies[i].isJolly && ((enemies[i].timeAlive % 50) == 1) && enemies[i].timeAlive != enemies[i].lastSpawn) {
+                    let snowflake = new component(20, 20, "images/spawns/snowflake.png", enemies[i].x + (Math.random() * 50), enemies[i].y);
+                    snowflake.isSnowflake = true;
+                    snowflake.isTransparent = true;
+                    snowflake.radius += 5;
+                    snowflake.dmg = 0;
+                    spawns.push(snowflake);
+                    enemies[i].lastSpawn = enemies[i].timeAlive;
+                }
+                // saxophonist
+                if(enemies[i].playsSax && ((enemies[i].timeAlive % 50) == 1) && enemies[i].timeAlive != enemies[i].lastSpawn) {
+                    let music = new component(20, 20, "images/spawns/musicnote.png", enemies[i].x + (Math.random() * 50), enemies[i].y);
+                    music.isMusic = true;
+                    music.isTransparent = true;
+                    music.radius += 8;
+                    music.dmg = 0.5;
+                    music.index = 12;
+                    spawns.push(music);
+                    enemies[i].lastSpawn = enemies[i].timeAlive;
+                }
+                // wizard
+                if(enemies[i].isWizard && ((enemies[i].timeAlive % 300) == 1) && enemies[i].timeAlive != enemies[i].lastSpawn) {
+                    let potion = new component(20, 25, "images/spawns/potion.png", enemies[i].x, enemies[i].y);
+                    potion.speedScale = 0;
+                    potion.radius += 8;
+                    potion.dmg = 0.5;
+                    potion.index = 13;
+                    spawns.push(potion);
+                    enemies[i].lastSpawn = enemies[i].timeAlive;
+                }
+                // banana
+                if(enemies[i].eatsBananas && ((enemies[i].timeAlive % 300)) == 1 && enemies[i].timeAlive != enemies[i].lastSpawn) {
+                    let banana = new component(40, 45, "images/spawns/banana.png", enemies[i].x, enemies[i].y);
+                    banana.isBanana = true;
+                    banana.speedScale = 0;
+                    banana.radius -= 2;
+                    banana.dmg = 0;
+                    spawns.push(banana);
+                    enemies[i].lastSpawn = enemies[i].timeAlive;
+                }
+                // devil
+                if(enemies[i].isDevil && ((enemies[i].timeAlive % 100)) == 1 && enemies[i].timeAlive != enemies[i].lastSpawn) {
+                    let angle = 0;
+                    let range = 50;
+                    if(Math.abs(enemies[i].x - player.x) <= range) {
+                        if(enemies[i].y < player.y) {
+                            angle = 315; // above player
+                        } else {
+                            angle = 135; // below player
+                        }
+                    } else if(Math.abs(enemies[i].y - player.y) <= range) {
+                        if (enemies[i].x < player.x) {
+                            angle = 225; // left of player
+                        } else {
+                            angle = 45; // right of player
+                        }
+                    } else {
+                        if (enemies[i].x < player.x) {
+                            if (enemies[i].y < player.y) {
+                                angle = 270; // top left of player
+                            } else {
+                                angle = 180; // bottom left of player
+                            }
+                        } else if (enemies[i].y > player.y) {
+                            angle = 90; // bottom right of player
+                        }
+                    }
+                    let fireball = new component(30, 30, "images/spawns/fireball.png", enemies[i].x, enemies[i].y, angle);
+                    fireball.isFire = true;
+                    fireball.isTransparent = true;
+                    fireball.speedScale = 4;
+                    fireball.radius += 3;
+                    fireball.dmg = 0.5;
+                    fireball.index = 16;
+                    spawns.push(fireball);
+                    enemies[i].lastSpawn = enemies[i].timeAlive;
+                }
+                // ** ^ enemy behavior adjusments ^ **
+                tempX += enemies[i].offsetX;
+                tempY += enemies[i].offsetY;
+                if(!enemies[i].isCrazy && !enemies[i].isFire) {
+                    enemies[i].dirX = (tempX - enemies[i].x) / Math.sqrt((tempX - enemies[i].x) ** 2 + (tempY - enemies[i].y) ** 2);
+                    enemies[i].dirY = (tempY - enemies[i].y) / Math.sqrt((tempX - enemies[i].x) ** 2 + (tempY - enemies[i].y) ** 2);
+                }
+                // ** v enemy behavior adjustments v **
+                // crazy
+                if(enemies[i].isCrazy) {
+                    if(!enemies[i].isSet) {
+                        enemies[i].dirX = Math.random();
+                        enemies[i].dirY = Math.random();
+                        enemies[i].isSet = true;
+                    }
+                    switch(atBounds(enemies[i])) {
+                        case "left": 
+                            enemies[i].dirX = Math.abs(enemies[i].dirX);
+                            break;
+                        case "right": 
+                            enemies[i].dirX = -Math.abs(enemies[i].dirX);
+                            break;
+                        case "top": 
+                            enemies[i].dirY = Math.abs(enemies[i].dirY);
+                            break;
+                        case "bottom": 
+                            enemies[i].dirY = -Math.abs(enemies[i].dirY);  
+                            break;
+                        default: 
+                            break;
+                    }
+                }
+                // windy
+                if(enemies[i].blowDir != "none") {
+                    switch(enemies[i].blowDir) {
+                        case "left": 
+                            enemies[i].dirX = -1;
+                            enemies[i].dirY = 0;
+                            break;
+                        case "right": 
+                            enemies[i].dirX = 1;
+                            enemies[i].dirY = 0;
+                            break;
+                    }
+                    if(atBounds(enemies[i]) == "left") {
+                        enemies[i].x = window.innerWidth - 100;
+                    } else if(atBounds(enemies[i]) == "right") {
+                        enemies[i].x = 100;
+                    }
+                }
+                // christmas spawn: snowflake
+                if(enemies[i].isSnowflake) {
+                    enemies[i].dirX = 0;
+                    enemies[i].dirY = 1;
+                }
+                // saxophonist spawn: music note
+                if(enemies[i].isMusic) {
+                    enemies[i].dirX = 0;
+                    enemies[i].dirY = -1;
+                }
+                // devil spawn: fireball
+                if(enemies[i].isFire) {
+                    if(!enemies[i].isSet) {
+                        enemies[i].dirX = (player.x - enemies[i].x) / Math.sqrt((player.x - enemies[i].x) ** 2 + (player.y - enemies[i].y) ** 2);
+                        enemies[i].dirY = (player.y - enemies[i].y) / Math.sqrt((player.x - enemies[i].x) ** 2 + (player.y - enemies[i].y) ** 2);
+                        enemies[i].isSet = true;
+                    }
+                }
+                // artist
+                if(enemies[i].isArtist) {
+                    let src = "images/spawns/trail.png";
+                    if(enemies[i].dirX > 0) { src = "images/spawns/trailflip.png"; }
+                    let paint = new component(50, 30, src, enemies[i].x + 40, enemies[i].y + 80);
+                    paint.isPaint = true;
+                    paint.isTransparent = true;
+                    paint.speedScale = 0;
+                    paint.dmg = 0;
+                    spawns.push(paint);
+                }
+                // artist spawn: paint trail
+                let toRemove = [];
+                if((enemies[i].isPaint && enemies[i].timeAlive > 800) || (enemies[i].isSplotch && enemies[i].timeAlive > 300)) {
+                    toRemove.push(i);
+                }
+                // ** ^ enemy behavior adjustments ^ **
+                enemies[i].speedX = enemies[i].speedScale * enemies[i].dirX;
+                enemies[i].speedY = enemies[i].speedScale * enemies[i].dirY;
+                for(let i = 0; i < toRemove.length; i++) {
+                    enemies.splice(toRemove[i], 1);
+                }
+                enemies[i].newPos();
+                enemies[i].update();
+                enemies[i].timeAlive++;
+            }
+            enemies = enemies.concat(spawns);
+            spawns = [];
+            // vampire movement
+            for(let i = 0; i < vampires.length; i++) {
+                vampires[i].speedScale = 1.5 + (0.1 * (vampires.length - 1));
+                vampires[i].dirX = (player.x - vampires[i].x) / Math.sqrt((player.x - vampires[i].x) ** 2 + (player.y - vampires[i].y) ** 2);
+                vampires[i].dirY = (player.y - vampires[i].y) / Math.sqrt((player.x - vampires[i].x) ** 2 + (player.y - vampires[i].y) ** 2);
+                vampires[i].speedX = vampires[i].speedScale * vampires[i].dirX;
+                vampires[i].speedY = vampires[i].speedScale * vampires[i].dirY;
+                vampires[i].newPos();
+                vampires[i].update();
+                vampires[i].timeAlive++;
+            }
+        }
+
+        function resizeCanvas() {
+            gameArea.canvas.width = window.innerWidth;
+            gameArea.canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+    </script>
+</body>
+</html>
