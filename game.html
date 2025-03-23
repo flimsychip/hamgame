@@ -118,6 +118,7 @@
             this.playsSax = false;
             this.isMusic = false;
             this.isWizard = false;
+            this.isPotion = false;
             this.eatsBananas = false;
             this.isBanana = false;
             this.isVamp = false;
@@ -527,7 +528,9 @@
                         enemies[j].width -= 20;
                         enemies[j].height -= 17;
                         if(enemies[j].health <= 0) {
-                            killCount++;
+                            if(!enemies[j].isBanana && !enemies[j].isPotion) {
+                                killCount++;
+                            }
                             enemies.splice(j, 1);
                             j--;
                         }
@@ -632,6 +635,7 @@
                 // wizard
                 if(enemies[i].isWizard && ((enemies[i].timeAlive % 300) == 1) && enemies[i].timeAlive != enemies[i].lastSpawn) {
                     let potion = new component(20, 25, "images/spawns/potion.png", enemies[i].x, enemies[i].y);
+                    potion.isPotion = true;
                     potion.speedScale = 0;
                     potion.radius += 8;
                     potion.dmg = 0.5;
