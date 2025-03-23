@@ -7,6 +7,7 @@
 </head>
 <link rel="stylesheet" href="game.css">
 <body onload="startGame()">
+    <p id="killCount">kills: 0</p>
     <div class="container">
         <div id="loseScreen"></div>
         <div id="deathScreen">
@@ -313,7 +314,7 @@
             }, 1300);
         }
 
-        function drawHearts() {
+        function drawHeartsKills() {
             if(lives < 0) { lives = 0; }
             let xpos = window.innerWidth - 40;
             for(let i = 0; i < Math.floor(lives); i++) {
@@ -328,6 +329,7 @@
                 gameArea.context.drawImage(heartEmpty, xpos, 20, 25, 25);
                 xpos -= 30;
             }
+            document.getElementById("killCount").innerHTML = "kills: " + killCount;
         }
 
         function displayText(elementID, text, interval) {
@@ -435,7 +437,7 @@
                 return;
             }
             gameArea.clear();
-            drawHearts();
+            drawHeartsKills();
             // player movement
             player.speedX = 0;
             player.speedY = 0;
@@ -497,7 +499,7 @@
                         lives -= enemies[i].dmg;
                         enemies.splice(i, 1);
                         i--;
-                        drawHearts();
+                        drawHeartsKills();
                     }
                 }
             }
@@ -508,7 +510,7 @@
                     lives -= vampires[i].dmg;
                     vampires.splice(i, 1);
                     i--;
-                    drawHearts();
+                    drawHeartsKills();
                 }
             }
             if(lives <= 0) {
