@@ -199,7 +199,7 @@
                         }
                         break;
                 }
-                if(gameArea.keys[32]) {
+                if(gameArea.mouse) {
                     let projectile = new component(25, 25, "images/seed.png", player.x + 30, player.y + 25, angle);
                     projectile.speedX = direction.x * 1.5;
                     projectile.speedY = direction.y * 1.5;
@@ -426,6 +426,12 @@
                 })
                 window.addEventListener('keyup', function (e) {
                     gameArea.keys[e.keyCode] = (e.type == "keydown");
+                })
+                window.addEventListener('mousedown', function(e) {
+                    gameArea.mouse = true;
+                })
+                window.addEventListener('mouseup', function(e) {
+                    gameArea.mouse = false;
                 })
             },
             clear : function() {
