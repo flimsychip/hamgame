@@ -40,6 +40,7 @@
         var vampires = [];
         var direction = {x: 0, y: 0};
         var time = Date.now();
+        var lastSoundTime = 0;
         var screenNum = 0;
         var info = [
             { name: "OLD", desc: "and you're still in your prime...", bhv: "just really slow" },
@@ -200,6 +201,8 @@
                         break;
                 }
                 if(gameArea.mouse) {
+                    let sound = new Audio("sounds/shoot.mp3");
+                    sound.play();
                     let projectile = new component(25, 25, "images/seed.png", player.x + 30, player.y + 25, angle);
                     projectile.speedX = direction.x * 1.5;
                     projectile.speedY = direction.y * 1.5;
@@ -342,6 +345,10 @@
             // add text to element letter by letter
             let tempInterval = setInterval(function() {
                 if(i < text.length) {
+                    if(i % 2 == 0) {
+                        let sound = new Audio("sounds/type.mp3");
+                        sound.play();
+                    }
                     elem.innerHTML += text[i];
                     i++;
                     count++;
@@ -441,6 +448,9 @@
 
         function updateGameArea() {
             if(gameLost) { 
+                let sound = new Audio("sounds/lose.mp3");
+                sound.play();
+                clearInterval(gameArea.interval);
                 return;
             }
             gameArea.clear();
@@ -466,6 +476,8 @@
                         lastEnemy = enemies[i];
                     }
                     if(enemies[i].isSnowflake) {
+                        let sound = new Audio("sounds/snowflake.mp3");
+                        sound.play();
                         player.speedScale = 1;
                         player.image.src = "images/coldham.png";
                         player.update();
@@ -475,6 +487,8 @@
                         }, 2500);
                     }
                     if(enemies[i].isBanana) {
+                        let sound = new Audio("sounds/banana.mp3");
+                        sound.play();
                         if(!player.isSet) {
                             var glideStartTime = Date.now();
                             player.randomX = player.speedScale * (Math.random() * 2 - 1);
@@ -493,7 +507,24 @@
                             }
                         }, 15);
                     }
+                    if(enemies[i].isFire) {
+                        let sound = new Audio("sounds/fireball.mp3");
+                        sound.play();
+                    }
+                    if(enemies[i].isMusic) {
+                        let sound = new Audio("sounds/note.mp3");
+                        sound.play();
+                    }
+                    if(enemies[i].isPotion) {
+                        let sound = new Audio("sounds/potion.mp3");
+                        sound.play();
+                    }
                     if(enemies[i].isPaint && Date.now() - time > 100) {
+                        if(Date.now() - lastSoundTime > 300) {
+                            let sound = new Audio("sounds/paint.mp3");
+                            sound.play();
+                            lastSoundTime = Date.now();
+                        }
                         let splotch = new component(Math.floor(Math.random() * 200) + 100, Math.floor(Math.random() * 200) + 100, "images/spawns/splotch" + Math.floor(Math.random() * 3) + ".png", Math.random() * window.innerWidth, Math.random() * window.innerHeight);
                         splotch.isSplotch = true;
                         splotch.isTransparent = true;
@@ -503,6 +534,10 @@
                         spawns.push(splotch);
                         time = Date.now();
                     } else if(!enemies[i].isPaint && !enemies[i].isSplotch) {
+                        if(enemies[i].dmg != 0 && !enemies[i].isFire && !enemies[i].isMusic && !enemies[i].isPotion) {
+                            let sound = new Audio("sounds/ow.mp3");
+                            sound.play();
+                        }
                         lives -= enemies[i].dmg;
                         enemies.splice(i, 1);
                         i--;
@@ -513,6 +548,8 @@
             // player-vampire collision check
             for(let i = 0; i < vampires.length; i++) {
                 if(isColliding(vampires[i], player, 40)) {
+                    let sound = new Audio("sounds/ow.mp3");
+                    sound.play();
                     lastEnemy = vampires[i];
                     lives -= vampires[i].dmg;
                     vampires.splice(i, 1);
@@ -529,19 +566,29 @@
             // projectile-enemy collision check
             for(let i = 0; i < projectiles.length; i++) {
                 for(let j = 0; j < enemies.length; j++) {
-                    if(isColliding(projectiles[i], enemies[j]) && !enemies[j].isTransparent) {
-                        enemies[j].health--;
-                        enemies[j].width -= 20;
-                        enemies[j].height -= 17;
-                        if(enemies[j].health <= 0) {
-                            if(!enemies[j].isBanana && !enemies[j].isPotion) {
-                                killCount++;
+                    if(isColliding(projectiles[i], enemies[j])) {
+                        if(enemies[j].isTransparent) {
+                            if(enemies[j].isGhost && !projectiles[i].isSet) {
+                                let sound = new Audio("sounds/whoosh.mp3");
+                                sound.play();
+                                projectiles[i].isSet = true;
                             }
-                            enemies.splice(j, 1);
-                            j--;
+                        } else {
+                            enemies[j].health--;
+                            enemies[j].width -= 20;
+                            enemies[j].height -= 17;
+                            if(enemies[j].health <= 0) {
+                                if(!enemies[j].isBanana && !enemies[j].isPotion) {
+                                    killCount++;
+                                    let sound = new Audio("sounds/kill.wav");
+                                    sound.play();
+                                }
+                                enemies.splice(j, 1);
+                                j--;
+                            }
+                            projectiles.splice(i, 1);
+                            i--;
                         }
-                        projectiles.splice(i, 1);
-                        i--;
                     }
                 }
             }
@@ -549,6 +596,8 @@
             for(let i = 0; i < projectiles.length; i++) {
                 for(let j = 0; j < vampires.length; j++) {
                     if(isColliding(projectiles[i], vampires[j])) {
+                        let sound = new Audio("sounds/kill.wav");
+                        sound.play();
                         vampires.splice(j, 1);
                         j--;
                         projectiles.splice(i, 1);
@@ -560,6 +609,8 @@
             for(let i = 0; i < vampires.length; i++) {
                 for(let j = 0; j < enemies.length; j++) {
                     if(isColliding(vampires[i], enemies[j], 40) && !enemies[j].isTransparent && !(enemies[j].dmg < 1)) {
+                        let sound = new Audio("sounds/vamp.mp3");
+                        sound.play();
                         let vampire = new component(100, 85, "images/enemies/enemy15.png", enemies[j].x, enemies[j].y);
                         vampire.isVamp = true;
                         vampire.index = 15;
